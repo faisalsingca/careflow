@@ -1,0 +1,86 @@
+@extends('layouts.app')
+@section('title', 'Add Billing')
+
+@section('content')
+<div class="page-header">
+    <div>
+        <h4>Add Billing</h4>
+        <p>Create a new billing record</p>
+    </div>
+    <a href="{{ route('billings.index') }}" class="btn-outline-careflow">
+        <i class="bi bi-arrow-left me-1"></i> Back
+    </a>
+</div>
+
+<div class="form-card">
+    <form action="{{ route('billings.store') }}" method="POST">
+        @csrf
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Patient</label>
+                <select name="patient_id" class="form-select @error('patient_id') is-invalid @enderror">
+                    <option value="">-- Select Patient --</option>
+                    @foreach($patients as $patient)
+                        <option value="{{ $patient->id }}" {{ old('patient_id') == $patient->id ? 'selected' : '' }}>
+                            {{ $patient->full_name }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('patient_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Doctor</label>
+                <select name="doctor_id" class="form-select @error('doctor_id') is-invalid @enderror">
+                    <option value="">-- Select Doctor --</option>
+                    @foreach($doctors as $doctor)
+                        <option value="{{ $doctor->id }}" {{ old('doctor_id') == $doctor->id ? 'selected' : '' }}>
+                            Dr. {{ $doctor->full_name }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('doctor_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Billing Date</label>
+                <input type="date" name="billing_date"
+                       class="form-control @error('billing_date') is-invalid @enderror"
+                       value="{{ old('billing_date') }}">
+                @error('billing_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Amount (₱)</label>
+                <input type="number" step="0.01" name="amount"
+                       class="form-control @error('amount') is-invalid @enderror"
+                       value="{{ old('amount') }}" placeholder="0.00">
+                @error('amount') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Description</label>
+                <input type="text" name="description"
+                       class="form-control @error('description') is-invalid @enderror"
+                       value="{{ old('description') }}" placeholder="e.g. Consultation Fee">
+                @error('description') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="Unpaid"    {{ old('status') == 'Unpaid'    ? 'selected' : '' }}>Unpaid</option>
+                    <option value="Paid"      {{ old('status') == 'Paid'      ? 'selected' : '' }}>Paid</option>
+                    <option value="Cancelled" {{ old('status') == 'Cancelled' ? 'selected' : '' }}>Cancelled</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Notes <span class="text-muted">(optional)</span></label>
+                <textarea name="notes" rows="3" class="form-control"
+                          placeholder="Additional notes...">{{ old('notes') }}</textarea>
+            </div>
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn-careflow">
+                    <i class="bi bi-save me-1"></i> Save Billing
+                </button>
+                <a href="{{ route('billings.index') }}" class="btn-outline-careflow">Cancel</a>
+            </div>
+        </div>
+    </form>
+</div>
+@endsection
