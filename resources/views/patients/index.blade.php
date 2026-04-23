@@ -17,9 +17,7 @@
 <div class="search-wrap">
     <form method="GET" action="{{ route('patients.index') }}" class="search-form">
         <i class="bi bi-search"></i>
-        <input type="text" name="search"
-               placeholder="Search by name, contact, address..."
-               value="{{ $search ?? '' }}">
+        <input type="text" name="search" placeholder="Search by name, contact, address..." value="{{ $search ?? '' }}">
         @if(!empty($search))
             <a href="{{ route('patients.index') }}" class="search-clear">&times;</a>
         @endif
@@ -41,6 +39,7 @@
                 <th>Date of Birth</th>
                 <th>Contact</th>
                 <th>Address</th>
+                <th>Linked User</th>
                 @if(in_array(Auth::user()->role, ['admin', 'staff']))
                     <th class="text-center">Actions</th>
                 @endif
@@ -57,20 +56,38 @@
                     <td>{{ $patient->address }}</td>
                     @if(in_array(Auth::user()->role, ['admin', 'staff']))
                         <td class="text-center">
-                            <a href="{{ route('patients.edit', $patient) }}"
-                               class="btn btn-sm btn-outline-careflow me-1">
+                            <!-- Edit Button with Pen Icon -->
+                            <a href="{{ route('patients.edit', $patient) }}" class="btn btn-sm btn-warning me-1" title="Edit">
                                 <i class="bi bi-pencil"></i>
                             </a>
-                            <form action="{{ route('patients.destroy', $patient) }}"
-                                  method="POST" class="d-inline"
-                                  onsubmit="return confirm('Delete this patient?')">
+                            <!-- Delete Button with Trash Icon -->
+                            <form action="{{ route('patients.destroy', $patient) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this patient?')">
                                 @csrf @method('DELETE')
-                                <button class="btn btn-sm"
-                                        style="background:#fce4ec;color:#c62828;border-radius:8px;border:none;">
+                                <button class="btn btn-sm btn-danger" title="Delete">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </form>
                         </td>
+                        <td>
+    @if($patient->user)
+        <span class="badge badge-brand">{{ $patient->user->name }}</span>
+    @else
+        @if(Auth::user()->role === 'admin')
+            <form action="{{ route('patients.link-user', $patient) }}" method="POST" style="display:flex;gap:6px;align-items:center;">
+                @csrf
+                <select name="user_id" class="form-select" style="padding:4px 8px;font-size:12px;width:auto;">
+                    <option value="">-- Link User --</option>
+                    @foreach(\App\Models\User::where('role','patient')->whereDoesntHave('patient')->get() as $u)
+                        <option value="{{ $u->id }}">{{ $u->name }}</option>
+                    @endforeach
+                </select>
+                <button type="submit" class="btn btn-sm btn-primary">Link</button>
+            </form>
+        @else
+            <span style="color:var(--text-muted);font-size:12px;">Not linked</span>
+        @endif
+    @endif
+</td>
                     @endif
                 </tr>
             @empty
@@ -86,11 +103,9 @@
             @endforelse
         </tbody>
     </table>
-    <div class="d-flex justify-content-between align-items-center px-4 py-3"
-         style="border-top:1px solid #f0f0f0;">
+    <div class="d-flex justify-content-between align-items-center px-4 py-3" style="border-top:1px solid #f0f0f0;">
         <span style="font-size:12px;color:#aaa;">
-            Showing {{ $patients->firstItem() ?? 0 }} to {{ $patients->lastItem() ?? 0 }}
-            of {{ $patients->total() }} patients
+            Showing {{ $patients->firstItem() ?? 0 }} to {{ $patients->lastItem() ?? 0 }} of {{ $patients->total() }} patients
         </span>
         {{ $patients->links() }}
     </div>

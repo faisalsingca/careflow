@@ -7,7 +7,7 @@
 {{-- Page Header --}}
 <div class="page-header">
     <h1>Dashboard</h1>
-    <p>Welcome back, {{ Auth::user()->name }}. Here's what's happening today.</p>
+    <p>Welcome back, {{ Auth::user()?->name ?? 'Guest' }}. Here's what's happening today.</p>
 </div>
 
 {{-- ── STAT CARDS ────────────────────────────────────────────── --}}
