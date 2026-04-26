@@ -51,4 +51,18 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')
             ->with('success', "User '{$user->name}' role updated to {$request->role}.");
     }
+
+    public function destroy(User $user)
+    {
+        $this->checkAdmin();
+
+        if ($user->id === Auth::id()) {
+            return redirect()->route('admin.users.index')->with('error', 'You cannot delete your own account.');
+        }
+
+        $name = $user->name;
+        $user->delete();
+
+        return redirect()->route('admin.users.index')->with('success', "User '{$name}' deleted successfully.");
+    }
 }
