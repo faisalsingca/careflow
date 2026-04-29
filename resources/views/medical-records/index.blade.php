@@ -7,7 +7,7 @@
         <h4>Medical Records</h4>
         <p>Patient diagnosis and prescription records</p>
     </div>
-    @if(in_array(Auth::user()->role, ['admin', 'doctor']))
+    @if(Auth::user()->role === 'admin')
         <a href="{{ route('medical-records.create') }}" class="btn-careflow">
             <i class="bi bi-plus-lg me-1"></i> Add Record
         </a>
@@ -53,23 +53,25 @@
                     <td><strong>{{ $record->patient->full_name }}</strong></td>
                     <td>Dr. {{ $record->doctor->full_name }}</td>
                     <td>{{ \Carbon\Carbon::parse($record->record_date)->format('M d, Y') }}</td>
-                    <td>{{ $record->diagnosis }}</td>
-                    <td>{{ $record->prescription ?? '—' }}</td>
+                    <td>{{ $record->diagnosis ?? 'Pending doctor update' }}</td>
+                    <td>{{ $record->prescription ?? 'None' }}</td>
                     @if(in_array(Auth::user()->role, ['admin', 'doctor']))
                         <td class="text-center">
                             <a href="{{ route('medical-records.edit', $record) }}"
                                class="btn btn-sm btn-outline-careflow me-1">
                                 <i class="bi bi-pencil"></i>
                             </a>
-                            <form action="{{ route('medical-records.destroy', $record) }}"
-                                  method="POST" class="d-inline"
-                                  onsubmit="return confirm('Delete this record?')">
-                                @csrf @method('DELETE')
-                                <button class="btn btn-sm"
-                                        style="background:#fce4ec;color:#c62828;border-radius:8px;border:none;">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
+                            @if(Auth::user()->role === 'admin')
+                                <form action="{{ route('medical-records.destroy', $record) }}"
+                                      method="POST" class="d-inline"
+                                      onsubmit="return confirm('Delete this record?')">
+                                    @csrf @method('DELETE')
+                                    <button class="btn btn-sm"
+                                            style="background:#fce4ec;color:#c62828;border-radius:8px;border:none;">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            @endif
                         </td>
                     @endif
                 </tr>

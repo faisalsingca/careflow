@@ -30,6 +30,7 @@
             <div class="col-md-6">
                 <label class="form-label">Doctor</label>
                 <select name="doctor_id" class="form-select">
+                    <option value="">-- Select Doctor --</option>
                     @foreach($doctors as $doctor)
                         <option value="{{ $doctor->id }}"
                             {{ old('doctor_id', $appointment->doctor_id) == $doctor->id ? 'selected' : '' }}>

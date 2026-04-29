@@ -62,7 +62,7 @@
                 <tr>
                     <td>{{ $appointments->firstItem() + $loop->index }}</td>
                     <td><strong>{{ $appointment->patient->full_name }}</strong></td>
-                    <td>Dr. {{ $appointment->doctor->full_name }}</td>
+                    <td>{{ $appointment->doctor ? 'Dr. '.$appointment->doctor->full_name : 'Unassigned' }}</td>
                     <td>{{ \Carbon\Carbon::parse($appointment->appointment_date)->format('M d, Y') }}</td>
                     <td style="color:#7F77DD;font-weight:600;">
                         {{ \Carbon\Carbon::parse($appointment->appointment_time)->format('h:i A') }}

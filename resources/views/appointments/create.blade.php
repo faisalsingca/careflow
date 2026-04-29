@@ -18,14 +18,29 @@
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">Patient</label>
-                <select name="patient_id" class="form-select @error('patient_id') is-invalid @enderror">
-                    <option value="">-- Select Patient --</option>
-                    @foreach($patients as $patient)
-                        <option value="{{ $patient->id }}" {{ old('patient_id') == $patient->id ? 'selected' : '' }}>
-                            {{ $patient->full_name }}
-                        </option>
-                    @endforeach
-                </select>
+                @php
+                    $selectedPatient = $patients->firstWhere('id', (int) old('patient_id'));
+                @endphp
+                <div class="patient-search" data-patient-search>
+                    <input type="hidden" name="patient_id" value="{{ old('patient_id') }}" data-patient-id>
+                    <input type="text"
+                           class="form-control @error('patient_id') is-invalid @enderror"
+                           placeholder="Search patient..."
+                           autocomplete="off"
+                           value="{{ $selectedPatient?->full_name }}"
+                           data-patient-input>
+                    <div class="patient-search-menu" data-patient-menu>
+                        @foreach($patients as $patient)
+                            <button type="button"
+                                    class="patient-search-option"
+                                    data-patient-option
+                                    data-id="{{ $patient->id }}"
+                                    data-name="{{ $patient->full_name }}">
+                                {{ $patient->full_name }}
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
                 @error('patient_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
             <div class="col-md-6">
@@ -84,4 +99,78 @@
         </div>
     </form>
 </div>
+<style>
+    .patient-search { position: relative; }
+    .patient-search-menu {
+        display: none;
+        position: absolute;
+        z-index: 20;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        max-height: 220px;
+        overflow-y: auto;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, .12);
+        padding: 6px;
+    }
+    .patient-search.open .patient-search-menu { display: block; }
+    .patient-search-option {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        border-radius: 6px;
+        padding: 9px 10px;
+        text-align: left;
+        color: var(--text, #1f2937);
+    }
+    .patient-search-option:hover,
+    .patient-search-option:focus { background: #f4f2ff; outline: none; }
+    .patient-search-option[hidden] { display: none; }
+</style>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const wrapper = document.querySelector('[data-patient-search]');
+        if (!wrapper) return;
+
+        const input = wrapper.querySelector('[data-patient-input]');
+        const hidden = wrapper.querySelector('[data-patient-id]');
+        const options = Array.from(wrapper.querySelectorAll('[data-patient-option]'));
+
+        const filterOptions = function () {
+            const term = input.value.trim().toLowerCase();
+            let visible = 0;
+
+            options.forEach(function (option) {
+                const matches = option.dataset.name.toLowerCase().includes(term);
+                option.hidden = !matches;
+                if (matches) visible++;
+            });
+
+            wrapper.classList.add('open');
+        };
+
+        input.addEventListener('focus', filterOptions);
+        input.addEventListener('input', function () {
+            hidden.value = '';
+            filterOptions();
+        });
+
+        options.forEach(function (option) {
+            option.addEventListener('click', function () {
+                hidden.value = option.dataset.id;
+                input.value = option.dataset.name;
+                wrapper.classList.remove('open');
+            });
+        });
+
+        document.addEventListener('click', function (event) {
+            if (!wrapper.contains(event.target)) {
+                wrapper.classList.remove('open');
+            }
+        });
+    });
+</script>
 @endsection

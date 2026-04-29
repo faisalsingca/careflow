@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\Doctor;
+use App\Models\MedicalRecord;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -13,6 +14,29 @@ class AppointmentController extends Controller
     private function canModify(): bool
     {
         return in_array(Auth::user()->role, ['admin', 'staff']);
+    }
+
+    private function currentDoctorId(): ?int
+    {
+        return Auth::user()->doctor?->id;
+    }
+
+    private function createMedicalRecordForCompletedAppointment(Appointment $appointment): void
+    {
+        if ($appointment->status !== 'Completed' || !$appointment->doctor_id) {
+            return;
+        }
+
+        MedicalRecord::firstOrCreate(
+            ['appointment_id' => $appointment->id],
+            [
+                'patient_id'  => $appointment->patient_id,
+                'doctor_id'   => $appointment->doctor_id,
+                'record_date' => now()->toDateString(),
+                'diagnosis'   => null,
+                'notes'       => $appointment->notes,
+            ]
+        );
     }
 
     public function index(Request $request)
@@ -37,11 +61,17 @@ class AppointmentController extends Controller
             $query->where('patient_id', $patient->id);
         }
 
+        if ($user->isDoctor()) {
+            $query->where('doctor_id', $this->currentDoctorId() ?? 0);
+        }
+
         $query->when($search, function ($q) use ($search) {
-            $q->where('reason', 'like', "%{$search}%")
-              ->orWhere('status', 'like', "%{$search}%")
-              ->orWhereHas('patient', fn($q2) => $q2->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%"))
-              ->orWhereHas('doctor',  fn($q2) => $q2->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%"));
+            $q->where(function ($q2) use ($search) {
+                $q2->where('reason', 'like', "%{$search}%")
+                   ->orWhere('status', 'like', "%{$search}%")
+                   ->orWhereHas('patient', fn($q3) => $q3->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%"))
+                   ->orWhereHas('doctor', fn($q3) => $q3->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%"));
+            });
         });
 
         $query->when($sort === 'date_asc',  fn($q) => $q->orderBy('appointment_date', 'asc')->orderBy('appointment_time', 'asc'))
@@ -111,10 +141,16 @@ class AppointmentController extends Controller
             'notes'            => 'nullable|string',
         ]);
 
-        Appointment::create($request->only([
+        if ($request->status === 'Completed' && !$request->doctor_id) {
+            return back()->withInput()->withErrors(['doctor_id' => 'A doctor is required before completing an appointment.']);
+        }
+
+        $appointment = Appointment::create($request->only([
             'patient_id','doctor_id','appointment_date',
             'appointment_time','reason','status','notes'
         ]));
+
+        $this->createMedicalRecordForCompletedAppointment($appointment);
 
         return redirect()->route('appointments.index')->with('success', 'Appointment booked successfully.');
     }
@@ -146,10 +182,16 @@ class AppointmentController extends Controller
             'notes'            => 'nullable|string',
         ]);
 
+        if ($request->status === 'Completed' && !$request->doctor_id) {
+            return back()->withInput()->withErrors(['doctor_id' => 'A doctor is required before completing an appointment.']);
+        }
+
         $appointment->update($request->only([
             'patient_id','doctor_id','appointment_date',
             'appointment_time','reason','status','notes'
         ]));
+
+        $this->createMedicalRecordForCompletedAppointment($appointment->fresh());
 
         return redirect()->route('appointments.index')->with('success', 'Appointment updated successfully.');
     }
@@ -165,7 +207,11 @@ class AppointmentController extends Controller
     {
         if (!$this->canModify()) abort(403);
         $request->validate(['status' => 'required|in:Pending,Confirmed,Completed,Cancelled']);
+        if ($request->status === 'Completed' && !$appointment->doctor_id) {
+            return back()->withErrors(['status' => 'Assign a doctor before marking this appointment completed.']);
+        }
         $appointment->update(['status' => $request->status]);
+        $this->createMedicalRecordForCompletedAppointment($appointment->fresh());
         return back()->with('success', 'Appointment status updated.');
     }
 }

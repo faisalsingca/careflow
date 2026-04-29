@@ -18,7 +18,7 @@
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">Patient</label>
-                <select name="patient_id" class="form-select">
+                <select name="patient_id" class="form-select" @if(Auth::user()->role !== 'admin') disabled @endif>
                     @foreach($patients as $patient)
                         <option value="{{ $patient->id }}"
                             {{ old('patient_id', $medicalRecord->patient_id) == $patient->id ? 'selected' : '' }}>
@@ -29,7 +29,7 @@
             </div>
             <div class="col-md-6">
                 <label class="form-label">Doctor</label>
-                <select name="doctor_id" class="form-select">
+                <select name="doctor_id" class="form-select" @if(Auth::user()->role !== 'admin') disabled @endif>
                     @foreach($doctors as $doctor)
                         <option value="{{ $doctor->id }}"
                             {{ old('doctor_id', $medicalRecord->doctor_id) == $doctor->id ? 'selected' : '' }}>
@@ -40,11 +40,11 @@
             </div>
             <div class="col-md-6">
                 <label class="form-label">Record Date</label>
-                <input type="date" name="record_date" class="form-control"
+                <input type="date" name="record_date" class="form-control" @if(Auth::user()->role !== 'admin') disabled @endif
                        value="{{ old('record_date', $medicalRecord->record_date) }}">
             </div>
             <div class="col-md-6">
-                <label class="form-label">Diagnosis</label>
+                <label class="form-label">Diagnosis <span class="text-muted">(optional)</span></label>
                 <input type="text" name="diagnosis" class="form-control"
                        value="{{ old('diagnosis', $medicalRecord->diagnosis) }}">
             </div>

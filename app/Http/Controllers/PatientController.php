@@ -17,12 +17,27 @@ class PatientController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $user = Auth::user();
 
-        $patients = Patient::when($search, function ($query) use ($search) {
-            $query->where('first_name',    'like', "%{$search}%")
-                  ->orWhere('last_name',      'like', "%{$search}%")
+        $patients = Patient::query()
+        ->when($user->isDoctor(), function ($query) use ($user) {
+            $doctorId = $user->doctor?->id ?? 0;
+
+            $query->where(function ($q) use ($doctorId) {
+                $q->whereHas('appointments', fn($appt) => $appt->where('doctor_id', $doctorId))
+                  ->orWhereHas('medicalRecords', fn($record) => $record->where('doctor_id', $doctorId));
+            });
+        })
+        ->when($user->isPatient(), function ($query) use ($user) {
+            $query->whereKey($user->patient?->id ?? 0);
+        })
+        ->when($search, function ($query) use ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
                   ->orWhere('contact_number', 'like', "%{$search}%")
-                  ->orWhere('address',        'like', "%{$search}%");
+                  ->orWhere('address', 'like', "%{$search}%");
+            });
         })->latest()->paginate(10)->withQueryString();
 
         return view('patients.index', compact('patients', 'search'));

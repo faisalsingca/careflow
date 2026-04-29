@@ -31,24 +31,24 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Patient Management
-    Route::resource('patients', PatientController::class);
+    Route::resource('patients', PatientController::class)->middleware('role:admin,staff,doctor,patient');
 
     // Doctor Management
-    Route::resource('doctors', DoctorController::class);
-    Route::patch('doctors/{doctor}/toggle-status', [DoctorController::class, 'toggleStatus'])->name('doctors.toggle-status');
-    Route::post('patients/{patient}/link-user', [PatientController::class, 'linkUser'])->name('patients.link-user');
+    Route::resource('doctors', DoctorController::class)->middleware('role:admin');
+    Route::patch('doctors/{doctor}/toggle-status', [DoctorController::class, 'toggleStatus'])->name('doctors.toggle-status')->middleware('role:admin');
+    Route::post('patients/{patient}/link-user', [PatientController::class, 'linkUser'])->name('patients.link-user')->middleware('role:admin');
 
     // Appointments — staff/admin full CRUD + patient booking
     Route::get('appointments/book',  [AppointmentController::class, 'bookCreate'])->name('appointments.book');
     Route::post('appointments/book', [AppointmentController::class, 'bookStore'])->name('appointments.book.store');
-    Route::resource('appointments', AppointmentController::class);
-    Route::patch('appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.update-status');
+    Route::resource('appointments', AppointmentController::class)->middleware('role:admin,staff,doctor,patient');
+    Route::patch('appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.update-status')->middleware('role:admin,staff');
 
     // Medical Records
-    Route::resource('medical-records', MedicalRecordController::class);
+    Route::resource('medical-records', MedicalRecordController::class)->middleware('role:admin,staff,doctor');
 
     // Billing
-    Route::resource('billings', BillingController::class);
+    Route::resource('billings', BillingController::class)->middleware('role:admin,doctor');
 
     // Room Management
     Route::resource('rooms', RoomController::class);
@@ -60,7 +60,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('transactions', TransactionController::class);
 
     // Admin User Management
-    Route::prefix('admin')->name('admin.')->group(function () {
+    Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
         Route::resource('users', UserController::class)->except(['show', 'create', 'store']);
     });
 });
