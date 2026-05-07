@@ -45,6 +45,9 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.update-status')->middleware('role:admin,staff');
 
     // Medical Records
+    Route::get('medical-records/patients/{patient}', [MedicalRecordController::class, 'patientHistory'])
+        ->name('medical-records.patient-history')
+        ->middleware('role:admin,staff,doctor');
     Route::resource('medical-records', MedicalRecordController::class)->middleware('role:admin,staff,doctor');
 
     // Billing

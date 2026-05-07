@@ -25,6 +25,11 @@ class MedicalRecordController extends Controller
         return Auth::user()->role === 'admin';
     }
 
+    private function currentDoctorOrFail(): int
+    {
+        return $this->currentDoctorId() ?? abort(403, 'No doctor profile linked to this account.');
+    }
+
     private function authorizeRecordAccess(MedicalRecord $medicalRecord): void
     {
         if ($this->canManageAllRecords() || Auth::user()->role === 'staff') {
@@ -56,11 +61,51 @@ class MedicalRecordController extends Controller
         if (!$this->canViewRecords()) abort(403);
 
         $search = $request->input('search');
+        $isDoctorView = Auth::user()->role === 'doctor';
+
+        if ($isDoctorView) {
+            $doctorId = $this->currentDoctorOrFail();
+
+            $patients = Patient::query()
+                ->whereHas('medicalRecords', function ($query) use ($doctorId) {
+                    $query->where('doctor_id', $doctorId);
+                })
+                ->when($search, function ($query) use ($search, $doctorId) {
+                    $query->where(function ($patientQuery) use ($search, $doctorId) {
+                        $patientQuery->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%")
+                            ->orWhereHas('medicalRecords', function ($recordQuery) use ($search, $doctorId) {
+                                $recordQuery->where('doctor_id', $doctorId)
+                                    ->where(function ($historyQuery) use ($search) {
+                                        $historyQuery->where('diagnosis', 'like', "%{$search}%")
+                                            ->orWhere('prescription', 'like', "%{$search}%")
+                                            ->orWhere('notes', 'like', "%{$search}%");
+                                    });
+                            });
+                    });
+                })
+                ->withCount([
+                    'medicalRecords as doctor_visit_count' => function ($query) use ($doctorId) {
+                        $query->where('doctor_id', $doctorId);
+                    },
+                ])
+                ->with([
+                    'medicalRecords' => function ($query) use ($doctorId) {
+                        $query->where('doctor_id', $doctorId)
+                            ->with('doctor')
+                            ->orderByDesc('record_date')
+                            ->orderByDesc('id');
+                    },
+                ])
+                ->orderBy('first_name')
+                ->orderBy('last_name')
+                ->paginate(10)
+                ->withQueryString();
+
+            return view('medical-records.index', compact('patients', 'search', 'isDoctorView'));
+        }
 
         $records = MedicalRecord::with(['patient', 'doctor'])
-            ->when(Auth::user()->role === 'doctor', function ($query) {
-                $query->where('doctor_id', $this->currentDoctorId() ?? 0);
-            })
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('diagnosis', 'like', "%{$search}%")
@@ -77,7 +122,29 @@ class MedicalRecordController extends Controller
                 });
             })->latest()->paginate(10)->withQueryString();
 
-        return view('medical-records.index', compact('records', 'search'));
+        return view('medical-records.index', compact('records', 'search', 'isDoctorView'));
+    }
+
+    public function patientHistory(Patient $patient)
+    {
+        if (!$this->canViewRecords()) abort(403);
+
+        $user = Auth::user();
+        $query = $patient->medicalRecords()->with('doctor')->latest('record_date')->latest('id');
+
+        if ($user->role === 'doctor') {
+            $doctorId = $this->currentDoctorOrFail();
+
+            $query->where('doctor_id', $doctorId);
+        }
+
+        $records = $query->get();
+
+        if ($user->role === 'doctor' && $records->isEmpty()) {
+            abort(403);
+        }
+
+        return view('medical-records.history', compact('patient', 'records'));
     }
 
     public function create()
